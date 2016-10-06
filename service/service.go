@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log/syslog"
 	"net"
 	"net/http"
 	"os"
@@ -12,11 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	etcd "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/coreos/etcd/client"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/manners"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/metrics"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll"
+	log "github.com/Sirupsen/logrus"
+	logrus_syslog "github.com/Sirupsen/logrus/hooks/syslog"
+	logrus_logstash "github.com/bshuster-repo/logrus-logstash-hook"
+	etcd "github.com/coreos/etcd/client"
+	"github.com/mailgun/manners"
+	"github.com/mailgun/metrics"
+	"github.com/mailgun/scroll"
 	"github.com/vulcand/vulcand/api"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/engine/etcdv2ng"
@@ -67,18 +70,16 @@ func NewService(options Options, registry *plugin.Registry) *Service {
 }
 
 func (s *Service) Start() error {
-	log.InitWithConfig(log.Config{
-		Name:     s.options.Log,
-		Severity: s.options.LogSeverity.S.String(),
-	})
-
+	s.initLogger()
 	log.Infof("Service starts with options: %#v", s.options)
 
 	if s.options.PidPath != "" {
 		ioutil.WriteFile(s.options.PidPath, []byte(fmt.Sprint(os.Getpid())), 0644)
 	}
 
-	if s.options.StatsdAddr != "" {
+	if s.options.MetricsClient != nil {
+		s.metricsClient = s.options.MetricsClient
+	} else if s.options.StatsdAddr != "" {
 		var err error
 		s.metricsClient, err = metrics.NewWithOptions(s.options.StatsdAddr, s.options.StatsdPrefix, metrics.Options{UseBuffering: true})
 		if err != nil {
@@ -151,6 +152,47 @@ func (s *Service) Start() error {
 			return err
 		}
 	}
+}
+
+// initLogger initializes logger specified in the service options. This
+// function never fails. In case of any error a console logger with the text
+// formatter is initialized and the error details are logged as a warning.
+func (s *Service) initLogger() {
+	log.SetLevel(s.options.LogSeverity.S)
+	var err error
+	if s.options.Log == "console" {
+		log.SetOutput(os.Stdout)
+		log.SetFormatter(&log.TextFormatter{})
+		return
+	}
+	if s.options.Log == "syslog" {
+		var devNull *os.File
+		devNull, err = os.OpenFile("/dev/null", os.O_WRONLY, 0)
+		if err == nil {
+			var hook *logrus_syslog.SyslogHook
+			hook, err = logrus_syslog.NewSyslogHook("", "", syslog.LOG_INFO|syslog.LOG_MAIL, "vulcand")
+			if err == nil {
+				log.SetOutput(devNull)
+				log.SetFormatter(&log.TextFormatter{DisableColors: true})
+				log.AddHook(hook)
+				return
+			}
+		}
+	}
+	if s.options.Log == "json" {
+		log.SetOutput(os.Stdout)
+		log.SetFormatter(&log.JSONFormatter{})
+		return
+	}
+	if s.options.Log == "logstash" {
+		log.SetOutput(os.Stdout)
+		log.SetFormatter(&logrus_logstash.LogstashFormatter{Type: "logs"})
+		return
+	}
+
+	log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.TextFormatter{})
+	log.Warnf("Failed to initialized logger. Fallback to default: logger=%s, err=(%s)", s.options.Log, err)
 }
 
 func (s *Service) getFiles() (*proxy.FileDescriptor, []*proxy.FileDescriptor, error) {
@@ -308,6 +350,8 @@ func (s *Service) newProxy(id int) (proxy.Proxy, error) {
 		DefaultListener:    constructDefaultListener(s.options),
 		NotFoundMiddleware: s.registry.GetNotFoundMiddleware(),
 		Router:             s.registry.GetRouter(),
+		IncomingConnectionTracker: s.registry.GetIncomingConnectionTracker(),
+		OutgoingConnectionTracker: s.registry.GetOutgoingConnectionTracker(),
 	})
 }
 

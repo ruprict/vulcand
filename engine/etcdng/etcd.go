@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
+	log "github.com/Sirupsen/logrus"
+	"github.com/coreos/go-etcd/etcd"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/plugin"
 	"github.com/vulcand/vulcand/secret"
@@ -24,7 +24,7 @@ type ng struct {
 	cancelC          chan bool
 	stopC            chan bool
 	syncClusterStopC chan bool
-	logsev           log.Severity
+	logsev           log.Level
 	options          Options
 }
 
@@ -63,13 +63,17 @@ func (s *ng) Close() {
 	}
 }
 
-func (n *ng) GetLogSeverity() log.Severity {
+func (n *ng) GetSnapshot() (*engine.Snapshot, error) {
+	return nil, &engine.SnapshotNotSupportedError{}
+}
+
+func (n *ng) GetLogSeverity() log.Level {
 	return n.logsev
 }
 
-func (n *ng) SetLogSeverity(sev log.Severity) {
+func (n *ng) SetLogSeverity(sev log.Level) {
 	n.logsev = sev
-	log.SetSeverity(n.logsev)
+	log.SetLevel(n.logsev)
 }
 
 func (n *ng) reconnect() error {
@@ -430,9 +434,9 @@ func (n *ng) backendUsedBy(bk engine.BackendKey) ([]engine.Frontend, error) {
 
 // Subscribe watches etcd changes and generates structured events telling vulcand to add or delete frontends, hosts etc.
 // It is a blocking function.
-func (n *ng) Subscribe(changes chan interface{}, cancelC chan bool) error {
+func (n *ng) Subscribe(changes chan interface{}, afterIdx uint64, cancelC chan bool) error {
 	// This index helps us to get changes in sequence, as they were performed by clients.
-	waitIndex := uint64(0)
+	waitIndex := afterIdx
 	for {
 		response, err := n.client.Watch(n.etcdKey, waitIndex, true, nil, cancelC)
 		if err != nil {

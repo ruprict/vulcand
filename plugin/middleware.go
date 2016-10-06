@@ -3,8 +3,10 @@ package plugin
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/route"
+	"github.com/codegangsta/cli"
+	"github.com/vulcand/oxy/forward"
+	"github.com/vulcand/route"
+	"github.com/vulcand/vulcand/conntracker"
 	"github.com/vulcand/vulcand/router"
 	"net/http"
 	"reflect"
@@ -54,9 +56,11 @@ type SpecGetter func(string) *MiddlewareSpec
 
 // Registry contains currently registered middlewares and used to support pluggable middlewares across all modules of the vulcand
 type Registry struct {
-	specs    []*MiddlewareSpec
-	notFound Middleware
-	router   router.Router
+	specs                     []*MiddlewareSpec
+	notFound                  Middleware
+	router                    router.Router
+	incomingConnectionTracker conntracker.ConnectionTracker
+	outgoingConnectionTracker forward.UrlForwardingStateListener
 }
 
 func NewRegistry() *Registry {
@@ -109,6 +113,24 @@ func (r *Registry) SetRouter(router router.Router) error {
 
 func (r *Registry) GetRouter() router.Router {
 	return r.router
+}
+
+func (r *Registry) SetIncomingConnectionTracker(connTracker conntracker.ConnectionTracker) error {
+	r.incomingConnectionTracker = connTracker
+	return nil
+}
+
+func (r *Registry) GetIncomingConnectionTracker() conntracker.ConnectionTracker {
+	return r.incomingConnectionTracker
+}
+
+func (r *Registry) GetOutgoingConnectionTracker() forward.UrlForwardingStateListener {
+	return r.outgoingConnectionTracker
+}
+
+func (r *Registry) SetOutgoingConnectionTracker(connTracker forward.UrlForwardingStateListener) error {
+	r.outgoingConnectionTracker = connTracker
+	return nil
 }
 
 func verifySignature(fn interface{}) error {

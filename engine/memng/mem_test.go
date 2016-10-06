@@ -3,11 +3,10 @@ package memng
 import (
 	"testing"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
 	"github.com/vulcand/vulcand/engine/test"
 	"github.com/vulcand/vulcand/plugin/registry"
 
-	. "github.com/vulcand/vulcand/Godeps/_workspace/src/gopkg.in/check.v1"
+	. "gopkg.in/check.v1"
 )
 
 func TestMem(t *testing.T) { TestingT(t) }
@@ -19,16 +18,12 @@ type MemSuite struct {
 
 var _ = Suite(&MemSuite{})
 
-func (s *MemSuite) SetUpSuite(c *C) {
-	log.InitWithConfig(log.Config{Name: "console"})
-}
-
 func (s *MemSuite) SetUpTest(c *C) {
 	engine := New(registry.GetRegistry())
 
 	s.suite.ChangesC = make(chan interface{})
 	s.stopC = make(chan bool)
-	go engine.Subscribe(s.suite.ChangesC, s.stopC)
+	go engine.Subscribe(s.suite.ChangesC, 0, s.stopC)
 	s.suite.Engine = engine
 }
 

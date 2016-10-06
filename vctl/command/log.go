@@ -1,8 +1,10 @@
 package command
 
 import (
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
+	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 )
 
 func NewLogCommand(cmd *Command) cli.Command {
@@ -26,24 +28,23 @@ func NewLogCommand(cmd *Command) cli.Command {
 	}
 }
 
-func (cmd *Command) updateLogSeverityAction(c *cli.Context) {
-	sev, err := log.SeverityFromString(c.String("severity"))
+func (cmd *Command) updateLogSeverityAction(c *cli.Context) error {
+	sev, err := log.ParseLevel(strings.ToLower(c.String("severity")))
 	if err != nil {
-		cmd.printError(err)
-		return
+		return err
 	}
 	if err := cmd.client.UpdateLogSeverity(sev); err != nil {
-		cmd.printError(err)
-		return
+		return err
 	}
 	cmd.printOk("log severity updated")
+	return nil
 }
 
-func (cmd *Command) getLogSeverityAction(c *cli.Context) {
+func (cmd *Command) getLogSeverityAction(c *cli.Context) error {
 	sev, err := cmd.client.GetLogSeverity()
 	if err != nil {
-		cmd.printError(err)
-		return
+		return err
 	}
 	cmd.printOk("severity: %v", sev)
+	return nil
 }

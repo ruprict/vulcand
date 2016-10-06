@@ -5,9 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll"
-	oxytest "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/testutils"
+	log "github.com/Sirupsen/logrus"
+	"github.com/mailgun/scroll"
+	oxytest "github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/engine/memng"
 	"github.com/vulcand/vulcand/plugin/connlimit"
@@ -17,7 +17,7 @@ import (
 	"github.com/vulcand/vulcand/supervisor"
 	"github.com/vulcand/vulcand/testutils"
 
-	. "github.com/vulcand/vulcand/Godeps/_workspace/src/gopkg.in/check.v1"
+	. "gopkg.in/check.v1"
 )
 
 func TestApi(t *testing.T) { TestingT(t) }
@@ -29,10 +29,6 @@ type ApiSuite struct {
 }
 
 var _ = Suite(&ApiSuite{})
-
-func (s *ApiSuite) SetUpSuite(c *C) {
-	log.InitWithConfig(log.Config{Name: "console"})
-}
 
 func (s *ApiSuite) SetUpTest(c *C) {
 	newProxy := func(id int) (proxy.Proxy, error) {
@@ -65,7 +61,7 @@ func (s *ApiSuite) TestStatusV1(c *C) {
 }
 
 func (s *ApiSuite) TestSeverity(c *C) {
-	for _, sev := range []log.Severity{log.SeverityInfo, log.SeverityWarning, log.SeverityError} {
+	for _, sev := range []log.Level{log.InfoLevel, log.WarnLevel, log.ErrorLevel} {
 		err := s.client.UpdateLogSeverity(sev)
 		c.Assert(err, IsNil)
 		out, err := s.client.GetLogSeverity()
@@ -75,7 +71,7 @@ func (s *ApiSuite) TestSeverity(c *C) {
 }
 
 func (s *ApiSuite) TestInvalidSeverity(c *C) {
-	err := s.client.UpdateLogSeverity(-1)
+	err := s.client.UpdateLogSeverity(255)
 	c.Assert(err, NotNil)
 }
 

@@ -3,8 +3,10 @@ package service
 import (
 	"flag"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/mailgun/metrics"
+	"strings"
 	"time"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
 )
 
 type Options struct {
@@ -37,14 +39,15 @@ type Options struct {
 
 	SealKey string
 
-	StatsdAddr   string
-	StatsdPrefix string
+	StatsdAddr    string
+	StatsdPrefix  string
+	MetricsClient metrics.Client
 
 	DefaultListener bool
 }
 
 type SeverityFlag struct {
-	S log.Severity
+	S log.Level
 }
 
 func (s *SeverityFlag) Get() interface{} {
@@ -53,11 +56,11 @@ func (s *SeverityFlag) Get() interface{} {
 
 // Set is part of the flag.Value interface.
 func (s *SeverityFlag) Set(value string) error {
-	out, err := log.SeverityFromString(value)
+	sev, err := log.ParseLevel(strings.ToLower(value))
 	if err != nil {
 		return err
 	}
-	s.S = out
+	s.S = sev
 	return nil
 }
 
@@ -108,9 +111,9 @@ func ParseCommandLine() (options Options, err error) {
 	flag.StringVar(&options.Interface, "interface", "", "Interface to bind to")
 	flag.StringVar(&options.ApiInterface, "apiInterface", "", "Interface to for API to bind to")
 	flag.StringVar(&options.CertPath, "certPath", "", "KeyPair to use (enables TLS)")
-	flag.StringVar(&options.Log, "log", "console", "Logging to use (syslog or console)")
+	flag.StringVar(&options.Log, "log", "console", "Logging to use (console, json, syslog or logstash)")
 
-	options.LogSeverity.S = log.SeverityWarning
+	options.LogSeverity.S = log.WarnLevel
 	flag.Var(&options.LogSeverity, "logSeverity", "logs at or above this level to the logging output")
 
 	flag.IntVar(&options.ServerMaxHeaderBytes, "serverMaxHeaderBytes", 1<<20, "Maximum size of request headers")

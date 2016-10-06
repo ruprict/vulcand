@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/memmetrics"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/stream"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/route"
+	"github.com/vulcand/oxy/buffer"
+	"github.com/vulcand/oxy/memmetrics"
+	"github.com/vulcand/route"
 	"github.com/vulcand/vulcand/plugin"
 	"github.com/vulcand/vulcand/router"
 )
@@ -227,6 +227,8 @@ type HTTPFrontendSettings struct {
 	TrustForwardHeader bool
 	// Should host header be forwarded as-is?
 	PassHostHeader bool
+	// Should Stream?
+	Stream bool
 }
 
 func NewAddress(network, address string) (*Address, error) {
@@ -278,7 +280,7 @@ func NewHTTPFrontend(router router.Router, id, backendId string, routeExpr strin
 		return nil, fmt.Errorf("route should be a valid route expression: %s", routeExpr)
 	}
 
-	if settings.FailoverPredicate != "" && !stream.IsValidExpression(settings.FailoverPredicate) {
+	if !settings.Stream && settings.FailoverPredicate != "" && !buffer.IsValidExpression(settings.FailoverPredicate) {
 		return nil, fmt.Errorf("invalid failover predicate: %s", settings.FailoverPredicate)
 	}
 
@@ -589,7 +591,7 @@ func (n *NotFoundError) Error() string {
 	if n.Message != "" {
 		return n.Message
 	} else {
-		return "Object not found"
+		return "object not found"
 	}
 }
 
@@ -601,7 +603,7 @@ func (n *InvalidFormatError) Error() string {
 	if n.Message != "" {
 		return n.Message
 	} else {
-		return "Invalid format"
+		return "invalid format"
 	}
 }
 
@@ -611,6 +613,14 @@ type AlreadyExistsError struct {
 
 func (n *AlreadyExistsError) Error() string {
 	return n.Message
+}
+
+type SnapshotNotSupportedError struct {
+	Message string
+}
+
+func (e *SnapshotNotSupportedError) Error() string {
+	return e.Message
 }
 
 type Counters struct {
@@ -712,4 +722,25 @@ type TransportSettings struct {
 	Timeouts  TransportTimeouts
 	KeepAlive TransportKeepAlive
 	TLS       *tls.Config
+}
+
+// FrontendSpec fully specifies a particular frontend.
+type FrontendSpec struct {
+	Frontend    Frontend
+	Middlewares []Middleware
+}
+
+// BackendSpec fully specifies a particular backend.
+type BackendSpec struct {
+	Backend Backend
+	Servers []Server
+}
+
+// Snapshot represents system config at a given time.
+type Snapshot struct {
+	Index         uint64
+	FrontendSpecs []FrontendSpec
+	BackendSpecs  []BackendSpec
+	Hosts         []Host
+	Listeners     []Listener
 }

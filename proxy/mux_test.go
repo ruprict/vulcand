@@ -11,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/testutils"
-	. "github.com/vulcand/vulcand/Godeps/_workspace/src/gopkg.in/check.v1"
+	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/stapler"
 	. "github.com/vulcand/vulcand/testutils"
+	. "gopkg.in/check.v1"
 )
 
 func TestServer(t *testing.T) { TestingT(t) }
@@ -27,10 +26,6 @@ type ServerSuite struct {
 	mux    *mux
 	lastId int
 	st     stapler.Stapler
-}
-
-func (s *ServerSuite) SetUpSuite(c *C) {
-	log.InitWithConfig(log.Config{Name: "console"})
 }
 
 func (s *ServerSuite) SetUpTest(c *C) {
@@ -420,13 +415,10 @@ func (s *ServerSuite) TestOCSPStapling(c *C) {
 	})
 
 	c.Assert(err, IsNil)
-	fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
-	status, err := bufio.NewReader(conn).ReadString('\n')
-	c.Assert(err, IsNil)
-
-	c.Assert(status, Equals, "HTTP/1.0 200 OK\r\n")
+	fmt.Fprintf(conn, "GET / HTTP/1.1\r\n\r\n")
 	re := conn.OCSPResponse()
 	c.Assert(re, DeepEquals, OCSPResponseBytes)
+	
 	conn.Close()
 
 	// Make sure that deleting the host clears the cache

@@ -10,12 +10,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/testutils"
-	oxytrace "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/trace"
-	. "github.com/vulcand/vulcand/Godeps/_workspace/src/gopkg.in/check.v1"
+	"github.com/codegangsta/cli"
+	"github.com/vulcand/oxy/testutils"
+	oxytrace "github.com/vulcand/oxy/trace"
 	"github.com/vulcand/vulcand/plugin"
+	. "gopkg.in/check.v1"
 )
+
+func setUnixSocket(c *C) *net.UnixConn {
+	os.Remove("/tmp/vulcand_trace_test.sock")
+	unixAddr, err := net.ResolveUnixAddr("unixgram", "/tmp/vulcand_trace_test.sock")
+	c.Assert(err, IsNil)
+	conn, err := net.ListenUnixgram("unixgram", unixAddr)
+	c.Assert(err, IsNil)
+	return conn
+}
 
 func TestTrace(t *testing.T) { TestingT(t) }
 
@@ -31,6 +40,9 @@ func (s *TraceSuite) TestSpecIsOK(c *C) {
 }
 
 func (s *TraceSuite) TestGoodAddr(c *C) {
+	conn := setUnixSocket(c)
+	defer conn.Close()
+
 	vals := []string{
 		// host + port format
 		"syslog://localhost:5000",
@@ -39,9 +51,9 @@ func (s *TraceSuite) TestGoodAddr(c *C) {
 		"syslog://localhost:5000?f=LOG_LOCAL0&sev=DEBUG",
 
 		// local socket format
-		"syslog:///dev/log",
-		"syslog:///dev/log?f=MAIL",
-		"syslog:///dev/log?f=LOG_LOCAL0",
+		"syslog:///tmp/vulcand_trace_test.sock",
+		"syslog:///tmp/vulcand_trace_test.sock?f=MAIL",
+		"syslog:///tmp/vulcand_trace_test.sock?f=LOG_LOCAL0",
 
 		// default syslog
 		"syslog://",
@@ -68,11 +80,7 @@ func (s *TraceSuite) TestBadAddr(c *C) {
 }
 
 func (s *TraceSuite) TestHandler(c *C) {
-	os.Remove("/tmp/vulcand_trace_test.sock")
-	unixAddr, err := net.ResolveUnixAddr("unixgram", "/tmp/vulcand_trace_test.sock")
-	c.Assert(err, IsNil)
-	conn, err := net.ListenUnixgram("unixgram", unixAddr)
-	c.Assert(err, IsNil)
+	conn := setUnixSocket(c)
 	defer conn.Close()
 
 	outC := make(chan []byte, 1000)
@@ -133,18 +141,20 @@ func (s *TraceSuite) TestNewFromCLI(c *C) {
 	app := cli.NewApp()
 	app.Name = "test"
 	executed := false
-	app.Action = func(ctx *cli.Context) {
+	app.Action = func(ctx *cli.Context) error {
 		executed = true
 		out, err := FromCli(ctx)
 		c.Assert(out, NotNil)
 		c.Assert(err, IsNil)
 
 		t := out.(*Trace)
-		c.Assert(t.Addr, Equals, "syslog:///dev/log?sev=INFO&f=MAIL")
+		c.Assert(t.Addr, Equals, "syslog://localhost:5000?sev=INFO&f=MAIL")
 		c.Assert(t.ReqHeaders, DeepEquals, []string{"X-A", "X-B"})
 		c.Assert(t.RespHeaders, DeepEquals, []string{"X-C", "X-D"})
+
+		return nil
 	}
 	app.Flags = CliFlags()
-	app.Run([]string{"test", "--addr=syslog:///dev/log?sev=INFO&f=MAIL", "--reqHeader=X-A", "--reqHeader=X-B", "--respHeader=X-C", "--respHeader=X-D"})
+	app.Run([]string{"test", "--addr=syslog://localhost:5000?sev=INFO&f=MAIL", "--reqHeader=X-A", "--reqHeader=X-B", "--respHeader=X-C", "--respHeader=X-D"})
 	c.Assert(executed, Equals, true)
 }

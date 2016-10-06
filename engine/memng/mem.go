@@ -8,7 +8,7 @@ import (
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/plugin"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
+	log "github.com/Sirupsen/logrus"
 )
 
 // Mem is exported to provide easy access to its internals
@@ -24,7 +24,7 @@ type Mem struct {
 	Registry    *plugin.Registry
 	ChangesC    chan interface{}
 	ErrorsC     chan error
-	LogSeverity log.Severity
+	LogSeverity log.Level
 }
 
 func New(r *plugin.Registry) engine.Engine {
@@ -52,13 +52,17 @@ func (m *Mem) emit(val interface{}) {
 func (m *Mem) Close() {
 }
 
-func (m *Mem) GetLogSeverity() log.Severity {
+func (n *Mem) GetSnapshot() (*engine.Snapshot, error) {
+	return nil, &engine.SnapshotNotSupportedError{}
+}
+
+func (m *Mem) GetLogSeverity() log.Level {
 	return m.LogSeverity
 }
 
-func (m *Mem) SetLogSeverity(sev log.Severity) {
+func (m *Mem) SetLogSeverity(sev log.Level) {
 	m.LogSeverity = sev
-	log.SetSeverity(m.LogSeverity)
+	log.SetLevel(m.LogSeverity)
 }
 
 func (m *Mem) GetRegistry() *plugin.Registry {
@@ -316,7 +320,7 @@ func (m *Mem) DeleteServer(sk engine.ServerKey) error {
 	return &engine.NotFoundError{}
 }
 
-func (m *Mem) Subscribe(changes chan interface{}, cancelC chan bool) error {
+func (m *Mem) Subscribe(changes chan interface{}, afterIdx uint64, cancelC chan bool) error {
 	for {
 		select {
 		case <-cancelC:

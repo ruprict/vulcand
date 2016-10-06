@@ -11,10 +11,12 @@ import (
 	"github.com/vulcand/vulcand/router"
 	"github.com/vulcand/vulcand/stapler"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/metrics"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/timetools"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/route"
+	log "github.com/Sirupsen/logrus"
+	"github.com/mailgun/metrics"
+	"github.com/mailgun/timetools"
+	"github.com/vulcand/oxy/forward"
+	"github.com/vulcand/route"
+	"github.com/vulcand/vulcand/conntracker"
 )
 
 // mux is capable of listening on multiple interfaces, graceful shutdowns and updating TLS certificates
@@ -37,17 +39,20 @@ type mux struct {
 	// Wait group for graceful shutdown
 	wg *sync.WaitGroup
 
-	// Read write mutex for serlialized operations
+	// Read write mutex for serialized operations
 	mtx *sync.RWMutex
 
-	// Router will be shared between mulitple listeners
+	// Router will be shared between multiple listeners
 	router router.Router
 
 	// Current server stats
 	state muxState
 
 	// Connection watcher
-	connTracker *connTracker
+	incomingConnTracker conntracker.ConnectionTracker
+
+	// Connection watcher
+	outgoingConnTracker forward.UrlForwardingStateListener
 
 	// stopC used for global broadcast to all proxy systems that it's closed
 	stopC chan struct{}
@@ -72,8 +77,9 @@ func New(id int, st stapler.Stapler, o Options) (*mux, error) {
 
 		options: o,
 
-		router:      o.Router,
-		connTracker: newConnTracker(),
+		router:              o.Router,
+		incomingConnTracker: o.IncomingConnectionTracker,
+		outgoingConnTracker: o.OutgoingConnectionTracker,
 
 		servers:   make(map[engine.ListenerKey]*srv),
 		backends:  make(map[engine.BackendKey]*backend),
@@ -147,55 +153,6 @@ func (m *mux) GetFiles() ([]*FileDescriptor, error) {
 		}
 	}
 	return fds, nil
-}
-
-func (m *mux) FrontendStats(key engine.FrontendKey) (*engine.RoundTripStats, error) {
-	log.Infof("%s FrontendStats", m)
-
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	return m.frontendStats(key)
-}
-
-func (m *mux) ServerStats(key engine.ServerKey) (*engine.RoundTripStats, error) {
-	log.Infof("%s ServerStats", m)
-
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	return m.serverStats(key)
-}
-
-func (m *mux) BackendStats(key engine.BackendKey) (*engine.RoundTripStats, error) {
-	log.Infof("%s BackendStats", m)
-
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	return m.backendStats(key)
-}
-
-// TopFrontends returns locations sorted by criteria (faulty, slow, most used)
-// if hostname or backendId is present, will filter out locations for that host or backendId
-func (m *mux) TopFrontends(key *engine.BackendKey) ([]engine.Frontend, error) {
-	log.Infof("%s TopFrontends", m)
-
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	return m.topFrontends(key)
-}
-
-// TopServers returns endpoints sorted by criteria (faulty, slow, mos used)
-// if backendId is not empty, will filter out endpoints for that backendId
-func (m *mux) TopServers(key *engine.BackendKey) ([]engine.Server, error) {
-	log.Infof("%s TopServers", m)
-
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	return m.topServers(key)
 }
 
 func (m *mux) TakeFiles(files []*FileDescriptor) error {
@@ -594,11 +551,6 @@ func (s muxState) String() string {
 	return "undefined"
 }
 
-const (
-	Metrics = "_metrics"
-	PerfMon = "_perfMon"
-)
-
 func setDefaults(o Options) Options {
 	if o.MetricsClient == nil {
 		o.MetricsClient = metrics.NewNop()
@@ -608,6 +560,9 @@ func setDefaults(o Options) Options {
 	}
 	if o.Router == nil {
 		o.Router = route.NewMux()
+	}
+	if o.IncomingConnectionTracker == nil {
+		o.IncomingConnectionTracker = newDefaultConnTracker()
 	}
 	return o
 }

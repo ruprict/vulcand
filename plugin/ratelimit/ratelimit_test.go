@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/timetools"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/oxy/testutils"
-	. "github.com/vulcand/vulcand/Godeps/_workspace/src/gopkg.in/check.v1"
+	"github.com/codegangsta/cli"
+	"github.com/mailgun/timetools"
+	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/vulcand/plugin"
+	. "gopkg.in/check.v1"
 )
 
 func TestRL(t *testing.T) { TestingT(t) }
@@ -131,7 +131,7 @@ func (s *RateLimitSuite) TestFromCli(c *C) {
 	app.Name = "test"
 	app.Flags = GetSpec().CliFlags
 	executed := false
-	app.Action = func(ctx *cli.Context) {
+	app.Action = func(ctx *cli.Context) error {
 		executed = true
 		out, err := FromCli(ctx)
 		c.Assert(out, NotNil)
@@ -141,6 +141,8 @@ func (s *RateLimitSuite) TestFromCli(c *C) {
 		m, err := rl.NewHandler(nil)
 		c.Assert(m, NotNil)
 		c.Assert(err, IsNil)
+
+		return nil
 	}
 	app.Run([]string{"test", "--var=client.ip", "--requests=10", "--burst=3", "--period=4"})
 	c.Assert(executed, Equals, true)
@@ -336,8 +338,7 @@ func (s *RateLimitSuite) TestRequestProcessingAmbiguousConfig(c *C) {
 
 	// When/Then: The last of configured rates with the same period is applied,
 	// which 2 request/second, note that the default rate is 1 request/second.
-	hdr := testutils.Header("X-Rates", `[{"PeriodSeconds": 1, "Requests": 10},
-					                  {"PeriodSeconds": 1, "Requests": 2}]`)
+	hdr := testutils.Header("X-Rates", `[{"PeriodSeconds": 1, "Requests": 10}, {"PeriodSeconds": 1, "Requests": 2}]`)
 
 	re, _, err := testutils.Get(srv.URL, hdr)
 	c.Assert(err, IsNil)

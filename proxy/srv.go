@@ -4,15 +4,15 @@ import (
 	"crypto/tls"
 
 	"fmt"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/golang.org/x/crypto/ocsp"
+	"golang.org/x/crypto/ocsp"
 	"net"
 	"net/http"
 
 	"github.com/vulcand/vulcand/engine"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/manners"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/vulcand/route"
+	log "github.com/Sirupsen/logrus"
+	"github.com/mailgun/manners"
+	"github.com/vulcand/route"
 )
 
 // srv contains all that is necessary to run the HTTP(s) server. server does not work on its own,
@@ -127,7 +127,7 @@ but the file descriptor that was given corresponded to a listener of type %T. Mo
 		manners.Options{
 			Server:       s.newHTTPServer(),
 			Listener:     listener,
-			StateHandler: s.mux.connTracker.onStateChange,
+			StateHandler: s.mux.incomingConnTracker.RegisterStateChange,
 		})
 	s.state = srvStateHijacked
 	return nil
@@ -248,7 +248,7 @@ func (s *srv) start() error {
 			manners.Options{
 				Server:       s.newHTTPServer(),
 				Listener:     listener,
-				StateHandler: s.mux.connTracker.onStateChange,
+				StateHandler: s.mux.incomingConnTracker.RegisterStateChange,
 			})
 		s.state = srvStateActive
 		go s.serve(s.srv)

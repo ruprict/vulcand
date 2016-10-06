@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll"
+	log "github.com/Sirupsen/logrus"
+	"github.com/mailgun/scroll"
 	"github.com/vulcand/vulcand/anomaly"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/plugin"
@@ -113,12 +115,12 @@ func (c *ProxyController) getLogSeverity(w http.ResponseWriter, r *http.Request,
 }
 
 func (c *ProxyController) updateLogSeverity(w http.ResponseWriter, r *http.Request, params map[string]string) (interface{}, error) {
-	s, err := log.SeverityFromString(r.Form.Get("severity"))
+	sev, err := log.ParseLevel(strings.ToLower(r.Form.Get("severity")))
 	if err != nil {
 		return nil, formatError(err)
 	}
-	c.ng.SetLogSeverity(s)
-	return scroll.Response{"message": fmt.Sprintf("Severity has been updated to %v", s)}, nil
+	c.ng.SetLogSeverity(sev)
+	return scroll.Response{"message": fmt.Sprintf("Severity has been updated to %v", sev.String())}, nil
 }
 
 func (c *ProxyController) getHosts(w http.ResponseWriter, r *http.Request, params map[string]string, body []byte) (interface{}, error) {
@@ -147,7 +149,7 @@ func (c *ProxyController) getFrontends(w http.ResponseWriter, r *http.Request, p
 }
 
 func (c *ProxyController) getTopFrontends(w http.ResponseWriter, r *http.Request, params map[string]string) (interface{}, error) {
-	limit, err := strconv.Atoi(r.Form.Get("limit"))
+	limit, err := strconv.Atoi(formGet(r.Form, "limit", "0"))
 	if err != nil {
 		return nil, formatError(err)
 	}
@@ -244,7 +246,7 @@ func (c *ProxyController) getBackends(w http.ResponseWriter, r *http.Request, pa
 }
 
 func (c *ProxyController) getTopServers(w http.ResponseWriter, r *http.Request, params map[string]string) (interface{}, error) {
-	limit, err := strconv.Atoi(r.Form.Get("limit"))
+	limit, err := strconv.Atoi(formGet(r.Form, "limit", "0"))
 	if err != nil {
 		return nil, formatError(err)
 	}
@@ -359,6 +361,13 @@ func (c *ProxyController) deleteMiddleware(w http.ResponseWriter, r *http.Reques
 		return nil, formatError(err)
 	}
 	return scroll.Response{"message": "Middleware deleted"}, nil
+}
+
+func formGet(form url.Values, key, def string) string {
+	if value := form.Get(key); value != "" {
+		return value
+	}
+	return def
 }
 
 func formatError(e error) error {

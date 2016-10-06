@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll"
+	log "github.com/Sirupsen/logrus"
+	"github.com/mailgun/scroll"
 	"github.com/vulcand/vulcand/api"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/engine/memng"
@@ -20,7 +20,7 @@ import (
 	"github.com/vulcand/vulcand/supervisor"
 	"github.com/vulcand/vulcand/testutils"
 
-	. "github.com/vulcand/vulcand/Godeps/_workspace/src/gopkg.in/check.v1"
+	. "gopkg.in/check.v1"
 )
 
 const OK = ".*OK.*"
@@ -36,10 +36,6 @@ type CmdSuite struct {
 }
 
 var _ = Suite(&CmdSuite{})
-
-func (s *CmdSuite) SetUpSuite(c *C) {
-	log.InitWithConfig(log.Config{Name: "console"})
-}
 
 func (s *CmdSuite) SetUpTest(c *C) {
 	s.ng = memng.New(registry.GetRegistry())
@@ -116,7 +112,7 @@ func (s *CmdSuite) TestHostCRUD(c *C) {
 }
 
 func (s *CmdSuite) TestLogSeverity(c *C) {
-	for _, sev := range []log.Severity{log.SeverityInfo, log.SeverityWarning, log.SeverityError} {
+	for _, sev := range []log.Level{log.InfoLevel, log.WarnLevel, log.ErrorLevel} {
 		c.Assert(s.run("log", "set_severity", "-s", sev.String()), Matches, ".*updated.*")
 		c.Assert(s.run("log", "get_severity"), Matches, fmt.Sprintf(".*%v.*", sev))
 	}

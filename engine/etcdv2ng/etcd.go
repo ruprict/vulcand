@@ -3,39 +3,37 @@
 package etcdv2ng
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
-	"net/http"
-	"net"
-	"crypto/tls"
 
-	etcd "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/coreos/etcd/client"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/mailgun/log"
-	"github.com/vulcand/vulcand/Godeps/_workspace/src/golang.org/x/net/context"
+	"errors"
+	log "github.com/Sirupsen/logrus"
+	etcd "github.com/coreos/etcd/client"
 	"github.com/vulcand/vulcand/engine"
 	"github.com/vulcand/vulcand/plugin"
 	"github.com/vulcand/vulcand/secret"
-	"crypto/x509"
-	"io/ioutil"
+	"golang.org/x/net/context"
 )
 
 type ng struct {
-	nodes            []string
-	registry         *plugin.Registry
-	etcdKey          string
-	client           etcd.Client
-	kapi             etcd.KeysAPI
-	context          context.Context
-	cancelFunc       context.CancelFunc
-	cancelC          chan bool
-	stopC            chan bool
-	syncClusterStopC chan bool
-	logsev           log.Severity
-	options          Options
-	requireQuorum    bool
+	nodes         []string
+	registry      *plugin.Registry
+	etcdKey       string
+	client        etcd.Client
+	kapi          etcd.KeysAPI
+	context       context.Context
+	cancelFunc    context.CancelFunc
+	logsev        log.Level
+	options       Options
+	requireQuorum bool
 }
 
 type Options struct {
@@ -49,37 +47,180 @@ type Options struct {
 
 func New(nodes []string, etcdKey string, registry *plugin.Registry, options Options) (engine.Engine, error) {
 	n := &ng{
-		nodes:            nodes,
-		registry:         registry,
-		etcdKey:          etcdKey,
-		cancelC:          make(chan bool, 1),
-		stopC:            make(chan bool, 1),
-		syncClusterStopC: make(chan bool, 1),
-		options:          options,
+		nodes:    nodes,
+		registry: registry,
+		etcdKey:  etcdKey,
+		options:  options,
 	}
 	if err := n.reconnect(); err != nil {
 		return nil, err
 	}
 	if options.EtcdSyncIntervalSeconds > 0 {
-		go n.client.AutoSync(n.context, time.Duration(n.options.EtcdSyncIntervalSeconds) * time.Second)
+		go n.client.AutoSync(n.context, time.Duration(n.options.EtcdSyncIntervalSeconds)*time.Second)
 	}
 	return n, nil
 }
 
 func (n *ng) Close() {
-	n.syncClusterStopC <- true
 	if n.cancelFunc != nil {
 		n.cancelFunc()
 	}
 }
 
-func (n *ng) GetLogSeverity() log.Severity {
+func (n *ng) GetSnapshot() (*engine.Snapshot, error) {
+	response, err := n.kapi.Get(n.context, n.etcdKey, &etcd.GetOptions{Recursive: true, Sort: true, Quorum: n.requireQuorum})
+	if err != nil {
+		return nil, err
+	}
+	s := &engine.Snapshot{Index: response.Index}
+	for _, node := range response.Node.Nodes {
+		switch suffix(node.Key) {
+		case "frontends":
+			s.FrontendSpecs, err = n.parseFrontends(node)
+			if err != nil {
+				return nil, err
+			}
+		case "backends":
+			s.BackendSpecs, err = n.parseBackends(node)
+			if err != nil {
+				return nil, err
+			}
+		case "hosts":
+			s.Hosts, err = n.parseHosts(node)
+			if err != nil {
+				return nil, err
+			}
+		case "listeners":
+			s.Listeners, err = n.parseListeners(node)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return s, nil
+}
+
+func (n *ng) parseFrontends(node *etcd.Node, skipMiddlewares ...bool) ([]engine.FrontendSpec, error) {
+	frontendSpecs := make([]engine.FrontendSpec, len(node.Nodes))
+	for idx, node := range node.Nodes {
+		frontendId := suffix(node.Key)
+		for _, node := range node.Nodes {
+			switch suffix(node.Key) {
+			case "frontend":
+				frontend, err := engine.FrontendFromJSON(n.registry.GetRouter(), []byte(node.Value), frontendId)
+				if err != nil {
+					return nil, err
+				}
+				frontendSpecs[idx].Frontend = *frontend
+			case "middlewares":
+				if len(skipMiddlewares) == 1 && skipMiddlewares[0] {
+					break
+				}
+				middlewares := make([]engine.Middleware, len(node.Nodes))
+				for idx, node := range node.Nodes {
+					middlewareId := suffix(node.Key)
+					middleware, err := engine.MiddlewareFromJSON([]byte(node.Value), n.registry.GetSpec, middlewareId)
+					if err != nil {
+						return nil, err
+					}
+					middlewares[idx] = *middleware
+				}
+				frontendSpecs[idx].Middlewares = middlewares
+			}
+		}
+		if frontendSpecs[idx].Frontend.Id != frontendId {
+			return nil, fmt.Errorf("Frontend %s parameters missing", frontendId)
+		}
+	}
+	return frontendSpecs, nil
+}
+
+func (n *ng) parseBackends(node *etcd.Node, skipServers ...bool) ([]engine.BackendSpec, error) {
+	backendSpecs := make([]engine.BackendSpec, len(node.Nodes))
+	for idx, node := range node.Nodes {
+		backendId := suffix(node.Key)
+		for _, node := range node.Nodes {
+			switch suffix(node.Key) {
+			case "backend":
+				backend, err := engine.BackendFromJSON([]byte(node.Value), backendId)
+				if err != nil {
+					return nil, err
+				}
+				backendSpecs[idx].Backend = *backend
+			case "servers":
+				if len(skipServers) == 1 && skipServers[0] {
+					break
+				}
+				servers := make([]engine.Server, len(node.Nodes))
+				for idx, node := range node.Nodes {
+					serverId := suffix(node.Key)
+					server, err := engine.ServerFromJSON([]byte(node.Value), serverId)
+					if err != nil {
+						return nil, err
+					}
+					servers[idx] = *server
+				}
+				backendSpecs[idx].Servers = servers
+			}
+		}
+		if backendSpecs[idx].Backend.Id != backendId {
+			return nil, fmt.Errorf("Backend %s parameters missing", backendId)
+		}
+	}
+	return backendSpecs, nil
+}
+
+func (n *ng) parseHosts(node *etcd.Node) ([]engine.Host, error) {
+	hosts := make([]engine.Host, len(node.Nodes))
+	for idx, node := range node.Nodes {
+		hostname := suffix(node.Key)
+		for _, node := range node.Nodes {
+			switch suffix(node.Key) {
+			case "host":
+				var sealedHost host
+				if err := json.Unmarshal([]byte(node.Value), &sealedHost); err != nil {
+					return nil, err
+				}
+				var keyPair *engine.KeyPair
+				if len(sealedHost.Settings.KeyPair) != 0 {
+					if err := n.openSealedJSONVal(sealedHost.Settings.KeyPair, &keyPair); err != nil {
+						return nil, err
+					}
+				}
+				host, err := engine.NewHost(hostname, engine.HostSettings{Default: sealedHost.Settings.Default, KeyPair: keyPair, OCSP: sealedHost.Settings.OCSP})
+				if err != nil {
+					return nil, err
+				}
+				hosts[idx] = *host
+			}
+		}
+		if hosts[idx].Name != hostname {
+			return nil, fmt.Errorf("Host %s parameters missing", hostname)
+		}
+	}
+	return hosts, nil
+}
+
+func (n *ng) parseListeners(node *etcd.Node) ([]engine.Listener, error) {
+	listeners := make([]engine.Listener, len(node.Nodes))
+	for idx, node := range node.Nodes {
+		listenerId := suffix(node.Key)
+		listener, err := engine.ListenerFromJSON([]byte(node.Value), listenerId)
+		if err != nil {
+			return nil, err
+		}
+		listeners[idx] = *listener
+	}
+	return listeners, nil
+}
+
+func (n *ng) GetLogSeverity() log.Level {
 	return n.logsev
 }
 
-func (n *ng) SetLogSeverity(sev log.Severity) {
+func (n *ng) SetLogSeverity(sev log.Level) {
 	n.logsev = sev
-	log.SetSeverity(n.logsev)
+	log.SetLevel(n.logsev)
 }
 
 func (n *ng) reconnect() error {
@@ -126,7 +267,7 @@ func (n *ng) newHttpTransport() etcd.CancelableTransport {
 
 		if tlsCert, err := tls.LoadX509KeyPair(n.options.EtcdCertFile, n.options.EtcdKeyFile); err == nil {
 			cc = &tls.Config{
-				RootCAs: rpool,
+				RootCAs:            rpool,
 				Certificates:       []tls.Certificate{tlsCert},
 				InsecureSkipVerify: true,
 			}
@@ -148,7 +289,7 @@ func (n *ng) newHttpTransport() etcd.CancelableTransport {
 			KeepAlive: 30 * time.Second,
 		}).Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig: cc,
+		TLSClientConfig:     cc,
 	}
 
 	return tr
@@ -165,9 +306,10 @@ func (n *ng) GetHosts() ([]engine.Host, error) {
 		return nil, err
 	}
 	for _, hostKey := range vals {
-		host, err := n.GetHost(engine.HostKey{suffix(hostKey)})
+		host, err := n.GetHost(engine.HostKey{Name: suffix(hostKey)})
 		if err != nil {
-			return nil, err
+			log.Warningf("Invalid host config for %v: %v\n", hostKey, err)
+			continue
 		}
 		hosts = append(hosts, *host)
 	}
@@ -234,7 +376,8 @@ func (n *ng) GetListeners() ([]engine.Listener, error) {
 	for _, p := range vals {
 		l, err := n.GetListener(engine.ListenerKey{Id: suffix(p.Key)})
 		if err != nil {
-			return nil, err
+			log.Warningf("Invalid listener config for %v: %v\n", n.etcdKey, err)
+			continue
 		}
 		ls = append(ls, *l)
 	}
@@ -260,11 +403,11 @@ func (n *ng) UpsertListener(listener engine.Listener) error {
 	return n.setJSONVal(n.path("listeners", listener.Id), listener, noTTL)
 }
 
-func (s *ng) DeleteListener(key engine.ListenerKey) error {
+func (n *ng) DeleteListener(key engine.ListenerKey) error {
 	if key.Id == "" {
 		return &engine.InvalidFormatError{Message: "listener id can not be empty"}
 	}
-	return s.deleteKey(s.path("listeners", key.Id))
+	return n.deleteKey(n.path("listeners", key.Id))
 }
 
 func (n *ng) UpsertFrontend(f engine.Frontend, ttl time.Duration) error {
@@ -285,19 +428,20 @@ func (n *ng) UpsertFrontend(f engine.Frontend, ttl time.Duration) error {
 }
 
 func (n *ng) GetFrontends() ([]engine.Frontend, error) {
-	fs := []engine.Frontend{}
-	vals, err := n.getDirs(n.etcdKey, "frontends")
+	key := fmt.Sprintf("%s/frontends", n.etcdKey)
+	response, err := n.kapi.Get(n.context, key, &etcd.GetOptions{Recursive: true, Sort: true, Quorum: n.requireQuorum})
 	if err != nil {
 		return nil, err
 	}
-	for _, fPath := range vals {
-		f, err := n.GetFrontend(engine.FrontendKey{suffix(fPath)})
-		if err != nil {
-			return nil, err
-		}
-		fs = append(fs, *f)
+	frontendSpecs, err := n.parseFrontends(response.Node, true)
+	if err != nil {
+		return nil, err
 	}
-	return fs, nil
+	frontends := make([]engine.Frontend, len(frontendSpecs))
+	for i, frontendSpec := range frontendSpecs {
+		frontends[i] = frontendSpec.Frontend
+	}
+	return frontends, nil
 }
 
 func (n *ng) GetFrontend(key engine.FrontendKey) (*engine.Frontend, error) {
@@ -318,17 +462,17 @@ func (n *ng) DeleteFrontend(fk engine.FrontendKey) error {
 }
 
 func (n *ng) GetBackends() ([]engine.Backend, error) {
-	backends := []engine.Backend{}
-	ups, err := n.getDirs(n.etcdKey, "backends")
+	response, err := n.kapi.Get(n.context, fmt.Sprintf("%s/backends", n.etcdKey), &etcd.GetOptions{Recursive: true, Sort: true, Quorum: n.requireQuorum})
 	if err != nil {
 		return nil, err
 	}
-	for _, backendKey := range ups {
-		b, err := n.GetBackend(engine.BackendKey{Id: suffix(backendKey)})
-		if err != nil {
-			return nil, err
-		}
-		backends = append(backends, *b)
+	backendSpecs, err := n.parseBackends(response.Node, true)
+	if err != nil {
+		return nil, err
+	}
+	backends := make([]engine.Backend, len(backendSpecs))
+	for i, backendSpec := range backendSpecs {
+		backends[i] = backendSpec.Backend
 	}
 	return backends, nil
 }
@@ -374,7 +518,8 @@ func (n *ng) GetMiddlewares(fk engine.FrontendKey) ([]engine.Middleware, error) 
 	for _, p := range keys {
 		m, err := n.GetMiddleware(engine.MiddlewareKey{Id: suffix(p.Key), FrontendKey: fk})
 		if err != nil {
-			return nil, err
+			log.Warningf("Invalid middleware config for %v (frontend: %v): %v\n", p.Key, fk, err)
+			continue
 		}
 		ms = append(ms, *m)
 	}
@@ -426,7 +571,8 @@ func (n *ng) GetServers(bk engine.BackendKey) ([]engine.Server, error) {
 	for _, p := range keys {
 		srv, err := n.GetServer(engine.ServerKey{Id: suffix(p.Key), BackendKey: bk})
 		if err != nil {
-			return nil, err
+			log.Warningf("Invalid server config for %v (backend: %v): %v\n", p.Key, bk, err)
+			continue
 		}
 		svs = append(svs, *srv)
 	}
@@ -450,7 +596,7 @@ func (n *ng) DeleteServer(sk engine.ServerKey) error {
 
 func (n *ng) openSealedJSONVal(bytes []byte, val interface{}) error {
 	if n.options.Box == nil {
-		return fmt.Errorf("need secretbox to open sealed data")
+		return errors.New("need secretbox to open sealed data")
 	}
 	sv, err := secret.SealedValueFromJSON([]byte(bytes))
 	if err != nil {
@@ -465,7 +611,7 @@ func (n *ng) openSealedJSONVal(bytes []byte, val interface{}) error {
 
 func (n *ng) sealJSONVal(val interface{}) ([]byte, error) {
 	if n.options.Box == nil {
-		return nil, fmt.Errorf("this backend does not support encryption")
+		return nil, errors.New("this backend does not support encryption")
 	}
 	bytes, err := json.Marshal(val)
 	if err != nil {
@@ -494,8 +640,8 @@ func (n *ng) backendUsedBy(bk engine.BackendKey) ([]engine.Frontend, error) {
 
 // Subscribe watches etcd changes and generates structured events telling vulcand to add or delete frontends, hosts etc.
 // It is a blocking function.
-func (n *ng) Subscribe(changes chan interface{}, cancelC chan bool) error {
-	w := n.kapi.Watcher(n.etcdKey, &etcd.WatcherOptions{AfterIndex: 0, Recursive: true})
+func (n *ng) Subscribe(changes chan interface{}, afterIdx uint64, cancelC chan bool) error {
+	w := n.kapi.Watcher(n.etcdKey, &etcd.WatcherOptions{AfterIndex: afterIdx, Recursive: true})
 	for {
 		response, err := w.Next(n.context)
 		if err != nil {
@@ -528,21 +674,21 @@ func (n *ng) Subscribe(changes chan interface{}, cancelC chan bool) error {
 type MatcherFn func(*etcd.Response) (interface{}, error)
 
 // Dispatches etcd key changes changes to the etcd to the matching functions
-func (s *ng) parseChange(response *etcd.Response) (interface{}, error) {
+func (n *ng) parseChange(response *etcd.Response) (interface{}, error) {
 	matchers := []MatcherFn{
 		// Host updates
-		s.parseHostChange,
+		n.parseHostChange,
 
 		// Listener updates
-		s.parseListenerChange,
+		n.parseListenerChange,
 
 		// Frontend updates
-		s.parseFrontendChange,
-		s.parseFrontendMiddlewareChange,
+		n.parseFrontendChange,
+		n.parseFrontendMiddlewareChange,
 
 		// Backend updates
-		s.parseBackendChange,
-		s.parseBackendServerChange,
+		n.parseBackendChange,
+		n.parseBackendServerChange,
 	}
 	for _, matcher := range matchers {
 		a, err := matcher(response)
@@ -563,7 +709,7 @@ func (n *ng) parseHostChange(r *etcd.Response) (interface{}, error) {
 
 	switch r.Action {
 	case createA, setA:
-		host, err := n.GetHost(engine.HostKey{hostname})
+		host, err := n.GetHost(engine.HostKey{Name: hostname})
 		if err != nil {
 			return nil, err
 		}
@@ -572,7 +718,7 @@ func (n *ng) parseHostChange(r *etcd.Response) (interface{}, error) {
 		}, nil
 	case deleteA, expireA:
 		return &engine.HostDeleted{
-			HostKey: engine.HostKey{hostname},
+			HostKey: engine.HostKey{Name: hostname},
 		}, nil
 	}
 	return nil, fmt.Errorf("unsupported action for host: %s", r.Action)
@@ -628,7 +774,7 @@ func (n *ng) parseFrontendChange(r *etcd.Response) (interface{}, error) {
 	return nil, fmt.Errorf("unsupported action on the frontend: %v %v", r.Node.Key, r.Action)
 }
 
-func (s *ng) parseFrontendMiddlewareChange(r *etcd.Response) (interface{}, error) {
+func (n *ng) parseFrontendMiddlewareChange(r *etcd.Response) (interface{}, error) {
 	out := regexp.MustCompile("/frontends/([^/]+)/middlewares/([^/]+)$").FindStringSubmatch(r.Node.Key)
 	if len(out) != 3 {
 		return nil, nil
@@ -639,7 +785,7 @@ func (s *ng) parseFrontendMiddlewareChange(r *etcd.Response) (interface{}, error
 
 	switch r.Action {
 	case createA, setA:
-		m, err := s.GetMiddleware(mk)
+		m, err := n.GetMiddleware(mk)
 		if err != nil {
 			return nil, err
 		}
@@ -745,7 +891,7 @@ func (n *ng) getVal(key string) (string, error) {
 
 func (n *ng) getDirs(keys ...string) ([]string, error) {
 	var out []string
-	response, err := n.kapi.Get(n.context, strings.Join(keys, "/"), &etcd.GetOptions{Recursive: true, Sort:true, Quorum: n.requireQuorum})
+	response, err := n.kapi.Get(n.context, strings.Join(keys, "/"), &etcd.GetOptions{Recursive: true, Sort: true, Quorum: n.requireQuorum})
 	if err != nil {
 		if notFound(err) {
 			return out, nil
@@ -803,12 +949,11 @@ type Pair struct {
 }
 
 func suffix(key string) string {
-	vals := strings.Split(key, "/")
-	return vals[len(vals)-1]
-}
-
-func join(keys ...string) string {
-	return strings.Join(keys, "/")
+	lastSlashIdx := strings.LastIndex(key, "/")
+	if lastSlashIdx == -1 {
+		return key
+	}
+	return key[lastSlashIdx+1:]
 }
 
 func notFound(e error) bool {
@@ -835,8 +980,6 @@ func convertErr(e error) error {
 func isDir(n *etcd.Node) bool {
 	return n != nil && n.Dir == true
 }
-
-const encryptionSecretBox = "secretbox.v1"
 
 func responseToString(r *etcd.Response) string {
 	return fmt.Sprintf("%s %s %d", r.Action, r.Node.Key, r.Index)
