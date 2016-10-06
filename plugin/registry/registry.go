@@ -2,12 +2,12 @@
 package registry
 
 import (
-	"github.com/vulcand/vulcand/plugin"
-	"github.com/vulcand/vulcand/plugin/cbreaker"
-	"github.com/vulcand/vulcand/plugin/connlimit"
-	"github.com/vulcand/vulcand/plugin/ratelimit"
-	"github.com/vulcand/vulcand/plugin/rewrite"
-	"github.com/vulcand/vulcand/plugin/trace"
+	"github.com/ruprict/vulcand/plugin"
+	"github.com/ruprict/vulcand/plugin/cbreaker"
+	"github.com/ruprict/vulcand/plugin/connlimit"
+	"github.com/ruprict/vulcand/plugin/ratelimit"
+	"github.com/ruprict/vulcand/plugin/rewrite"
+	"github.com/ruprict/vulcand/plugin/trace"
 )
 
 func GetRegistry() *plugin.Registry {

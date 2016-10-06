@@ -2,3 +2,5 @@
 flymake_*
 *.swp
 *.go~
+
+.DS_store

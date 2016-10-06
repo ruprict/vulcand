@@ -11,7 +11,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -19,7 +18,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/vulcand/vulcand/engine"
+	"golang.org/x/crypto/ocsp"
+
+	"github.com/ruprict/vulcand/engine"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/mailgun/timetools"

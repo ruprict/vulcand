@@ -9,9 +9,9 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/mailgun/timetools"
+	"github.com/ruprict/vulcand/plugin"
 	"github.com/vulcand/oxy/ratelimit"
 	"github.com/vulcand/oxy/utils"
-	"github.com/vulcand/vulcand/plugin"
 )
 
 // Spec is an entry point of a plugin and will be called to register this middleware plugin withing vulcand

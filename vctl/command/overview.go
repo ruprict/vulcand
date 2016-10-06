@@ -9,7 +9,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/buger/goterm"
-	"github.com/vulcand/vulcand/engine"
+	"github.com/ruprict/vulcand/engine"
 )
 
 func frontendsOverview(frontends []engine.Frontend) string {

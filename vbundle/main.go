@@ -24,7 +24,7 @@ func main() {
 				cli.StringSliceFlag{
 					Name:  "middleware, m",
 					Value: &cli.StringSlice{},
-					Usage: "Path to repo and revision, e.g. github.com/vulcand/vulcand-plugins/auth",
+					Usage: "Path to repo and revision, e.g. github.com/ruprict/vulcand-plugins/auth",
 				},
 			},
 		},
@@ -104,11 +104,11 @@ func (p Package) Name() string {
 
 func builtinPackages() []Package {
 	return []Package{
-		"github.com/vulcand/vulcand/plugin/connlimit",
-		"github.com/vulcand/vulcand/plugin/ratelimit",
-		"github.com/vulcand/vulcand/plugin/rewrite",
-		"github.com/vulcand/vulcand/plugin/cbreaker",
-		"github.com/vulcand/vulcand/plugin/trace",
+		"github.com/ruprict/vulcand/plugin/connlimit",
+		"github.com/ruprict/vulcand/plugin/ratelimit",
+		"github.com/ruprict/vulcand/plugin/rewrite",
+		"github.com/ruprict/vulcand/plugin/cbreaker",
+		"github.com/ruprict/vulcand/plugin/trace",
 	}
 }
 

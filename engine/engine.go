@@ -4,7 +4,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/vulcand/vulcand/plugin"
+	"github.com/ruprict/vulcand/plugin"
 )
 
 type NewEngineFn func() (Engine, error)

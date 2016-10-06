@@ -8,11 +8,11 @@ import (
 
 	"github.com/mailgun/metrics"
 	"github.com/mailgun/timetools"
+	"github.com/ruprict/vulcand/conntracker"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/plugin"
+	"github.com/ruprict/vulcand/router"
 	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/vulcand/conntracker"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/plugin"
-	"github.com/vulcand/vulcand/router"
 )
 
 type Proxy interface {

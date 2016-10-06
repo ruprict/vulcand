@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/codegangsta/cli"
+	"github.com/ruprict/vulcand/plugin"
 	"github.com/vulcand/oxy/testutils"
 	oxytrace "github.com/vulcand/oxy/trace"
-	"github.com/vulcand/vulcand/plugin"
 	. "gopkg.in/check.v1"
 )
 

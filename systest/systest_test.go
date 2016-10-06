@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/secret"
+	. "github.com/ruprict/vulcand/testutils"
 	"github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/secret"
-	. "github.com/vulcand/vulcand/testutils"
 
 	. "gopkg.in/check.v1"
 )

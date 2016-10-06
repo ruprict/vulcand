@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/ruprict/vulcand/engine"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
-	"github.com/vulcand/vulcand/engine"
 
 	"github.com/mailgun/timetools"
 )

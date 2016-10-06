@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/mailgun/timetools"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/testutils"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/testutils"
 	"golang.org/x/crypto/ocsp"
 	. "gopkg.in/check.v1"
 )

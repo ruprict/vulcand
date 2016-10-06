@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 
 	"fmt"
-	"golang.org/x/crypto/ocsp"
 	"net"
 	"net/http"
 
-	"github.com/vulcand/vulcand/engine"
+	"golang.org/x/crypto/ocsp"
+
+	"github.com/ruprict/vulcand/engine"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/mailgun/manners"
@@ -112,7 +113,7 @@ func (s *srv) takeFile(f *FileDescriptor) error {
 	if s.isTLS() {
 		tcpListener, ok := listener.(*net.TCPListener)
 		if !ok {
-			return fmt.Errorf(`%s failed to take file descriptor - it is running in TLS mode so I need a TCP listener, 
+			return fmt.Errorf(`%s failed to take file descriptor - it is running in TLS mode so I need a TCP listener,
 but the file descriptor that was given corresponded to a listener of type %T. More about file descriptor: %s`, listener, s, f)
 		}
 		config, err := s.newTLSConfig()

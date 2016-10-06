@@ -2,7 +2,7 @@ package command
 
 import (
 	"github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/engine"
+	"github.com/ruprict/vulcand/engine"
 )
 
 func NewBackendCommand(cmd *Command) cli.Command {

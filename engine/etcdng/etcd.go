@@ -11,9 +11,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/go-etcd/etcd"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/plugin"
-	"github.com/vulcand/vulcand/secret"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/plugin"
+	"github.com/ruprict/vulcand/secret"
 )
 
 type ng struct {

@@ -5,8 +5,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/vulcand/vulcand/plugin/registry"
-	"github.com/vulcand/vulcand/service"
+	"github.com/ruprict/vulcand/plugin/registry"
+	"github.com/ruprict/vulcand/service"
 )
 
 func main() {

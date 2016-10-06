@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ruprict/vulcand/engine"
 	"github.com/vulcand/oxy/memmetrics"
-	"github.com/vulcand/vulcand/engine"
 )
 
 const (

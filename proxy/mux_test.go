@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/stapler"
+	. "github.com/ruprict/vulcand/testutils"
 	"github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/stapler"
-	. "github.com/vulcand/vulcand/testutils"
 	. "gopkg.in/check.v1"
 )
 
@@ -418,7 +418,7 @@ func (s *ServerSuite) TestOCSPStapling(c *C) {
 	fmt.Fprintf(conn, "GET / HTTP/1.1\r\n\r\n")
 	re := conn.OCSPResponse()
 	c.Assert(re, DeepEquals, OCSPResponseBytes)
-	
+
 	conn.Close()
 
 	// Make sure that deleting the host clears the cache

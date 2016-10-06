@@ -9,8 +9,8 @@ import (
 	"net/url"
 
 	"github.com/codegangsta/cli"
+	"github.com/ruprict/vulcand/plugin"
 	oxytrace "github.com/vulcand/oxy/trace"
-	"github.com/vulcand/vulcand/plugin"
 )
 
 const Type = "trace"

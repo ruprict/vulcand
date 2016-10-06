@@ -3,13 +3,14 @@ package plugin
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/codegangsta/cli"
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/route"
-	"github.com/vulcand/vulcand/conntracker"
-	"github.com/vulcand/vulcand/router"
 	"net/http"
 	"reflect"
+
+	"github.com/codegangsta/cli"
+	"github.com/ruprict/vulcand/conntracker"
+	"github.com/ruprict/vulcand/router"
+	"github.com/vulcand/oxy/forward"
+	"github.com/vulcand/route"
 )
 
 // Middleware specification, used to construct new middlewares and plug them into CLI API and backends

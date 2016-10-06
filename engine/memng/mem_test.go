@@ -3,8 +3,8 @@ package memng
 import (
 	"testing"
 
-	"github.com/vulcand/vulcand/engine/test"
-	"github.com/vulcand/vulcand/plugin/registry"
+	"github.com/ruprict/vulcand/engine/test"
+	"github.com/ruprict/vulcand/plugin/registry"
 
 	. "gopkg.in/check.v1"
 )

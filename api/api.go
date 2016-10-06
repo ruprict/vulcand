@@ -11,10 +11,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/mailgun/scroll"
-	"github.com/vulcand/vulcand/anomaly"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/plugin"
-	"github.com/vulcand/vulcand/router"
+	"github.com/ruprict/vulcand/anomaly"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/plugin"
+	"github.com/ruprict/vulcand/router"
 )
 
 type ProxyController struct {

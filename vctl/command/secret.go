@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/secret"
+	"github.com/ruprict/vulcand/secret"
 )
 
 func NewKeyCommand(cmd *Command) cli.Command {

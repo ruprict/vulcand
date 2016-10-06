@@ -4,7 +4,7 @@ const mainTemplate = `package main
 
 import (
 	"fmt"
-	"github.com/vulcand/vulcand/service"
+	"github.com/ruprict/vulcand/service"
 	"{{.PackagePath}}/registry"
 	"os"
 )
@@ -27,7 +27,7 @@ func main() {
 const registryTemplate = `package registry
 
 import (
-	"github.com/vulcand/vulcand/plugin"
+	"github.com/ruprict/vulcand/plugin"
 	{{range .Packages}}
 	"{{.}}"
 	{{end}}
@@ -54,8 +54,8 @@ func GetRegistry() (*plugin.Registry, error) {
 const vulcanctlTemplate = `package main
 
 import (
-    log "github.com/vulcand/vulcand/Godeps/_workspace/src/github.com/Sirupsen/logrus"
-	"github.com/vulcand/vulcand/vctl/command"
+    log "github.com/ruprict/vulcand/Godeps/_workspace/src/github.com/Sirupsen/logrus"
+	"github.com/ruprict/vulcand/vctl/command"
 	"{{.PackagePath}}/registry"
 	"os"
 )

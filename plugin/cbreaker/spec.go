@@ -30,8 +30,8 @@ import (
 	"time"
 
 	"github.com/codegangsta/cli"
+	"github.com/ruprict/vulcand/plugin"
 	"github.com/vulcand/oxy/cbreaker"
-	"github.com/vulcand/vulcand/plugin"
 )
 
 const Type = "cbreaker"

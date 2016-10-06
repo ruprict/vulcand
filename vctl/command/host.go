@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/engine"
+	"github.com/ruprict/vulcand/engine"
 )
 
 func NewHostCommand(cmd *Command) cli.Command {

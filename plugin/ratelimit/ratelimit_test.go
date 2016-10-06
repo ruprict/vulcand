@@ -9,8 +9,8 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/mailgun/timetools"
+	"github.com/ruprict/vulcand/plugin"
 	"github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/vulcand/plugin"
 	. "gopkg.in/check.v1"
 )
 

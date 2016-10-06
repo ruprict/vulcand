@@ -9,8 +9,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/ruprict/vulcand/engine"
 	"github.com/vulcand/oxy/memmetrics"
-	"github.com/vulcand/vulcand/engine"
 )
 
 func (m *mux) emitMetrics() error {

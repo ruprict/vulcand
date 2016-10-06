@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/buger/goterm"
-	"github.com/vulcand/vulcand/engine"
+	"github.com/ruprict/vulcand/engine"
 )
 
 func hostsView(hs []engine.Host) string {

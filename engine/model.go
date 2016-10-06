@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ruprict/vulcand/plugin"
+	"github.com/ruprict/vulcand/router"
 	"github.com/vulcand/oxy/buffer"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/route"
-	"github.com/vulcand/vulcand/plugin"
-	"github.com/vulcand/vulcand/router"
 )
 
 // StatsProvider provides realtime stats abount endpoints, backends and locations

@@ -6,7 +6,7 @@ import (
 
 	"github.com/buger/goterm"
 	"github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/engine"
+	"github.com/ruprict/vulcand/engine"
 )
 
 func NewTopCommand(cmd *Command) cli.Command {

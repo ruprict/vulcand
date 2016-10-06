@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/plugin"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/plugin"
 
 	log "github.com/Sirupsen/logrus"
 )

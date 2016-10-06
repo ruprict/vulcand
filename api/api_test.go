@@ -7,15 +7,15 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/mailgun/scroll"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/engine/memng"
+	"github.com/ruprict/vulcand/plugin/connlimit"
+	"github.com/ruprict/vulcand/plugin/registry"
+	"github.com/ruprict/vulcand/proxy"
+	"github.com/ruprict/vulcand/stapler"
+	"github.com/ruprict/vulcand/supervisor"
+	"github.com/ruprict/vulcand/testutils"
 	oxytest "github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/engine/memng"
-	"github.com/vulcand/vulcand/plugin/connlimit"
-	"github.com/vulcand/vulcand/plugin/registry"
-	"github.com/vulcand/vulcand/proxy"
-	"github.com/vulcand/vulcand/stapler"
-	"github.com/vulcand/vulcand/supervisor"
-	"github.com/vulcand/vulcand/testutils"
 
 	. "gopkg.in/check.v1"
 )

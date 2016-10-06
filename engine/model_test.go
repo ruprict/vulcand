@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ruprict/vulcand/plugin"
+	"github.com/ruprict/vulcand/plugin/connlimit"
 	"github.com/vulcand/route"
-	"github.com/vulcand/vulcand/plugin"
-	"github.com/vulcand/vulcand/plugin/connlimit"
 	. "gopkg.in/check.v1"
 )
 

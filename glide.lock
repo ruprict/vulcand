@@ -1,5 +1,5 @@
 hash: e5cc5954ce76fd9c20028f98f9cbfb640055bd8b5aa95af9e36e45b25c62b428
-updated: 2016-10-06T08:47:44.12422396-04:00
+updated: 2016-10-06T09:54:10.029542924-04:00
 imports:
 - name: github.com/bshuster-repo/logrus-logstash-hook
   version: f8b7f00a4feb2088e5f7290f1c9360d1081ba0b5
@@ -79,8 +79,6 @@ imports:
   - conntracker
   - engine
   - engine/etcdv2ng
-  - engine/memng
-  - engine/test
   - plugin
   - plugin/cbreaker
   - plugin/connlimit
@@ -94,7 +92,6 @@ imports:
   - service
   - stapler
   - supervisor
-  - testutils
   - vctl/command
 - name: golang.org/x/crypto
   version: d81fdb778bf2c40a91b24519d60cdc5767318829

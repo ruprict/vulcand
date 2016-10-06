@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/plugin"
+	"github.com/ruprict/vulcand/plugin"
 	. "gopkg.in/check.v1"
 )
 

@@ -3,14 +3,15 @@ package testutils
 import (
 	"encoding/hex"
 	"fmt"
-	"golang.org/x/crypto/ocsp"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 
+	"golang.org/x/crypto/ocsp"
+
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/plugin/ratelimit"
 	routelib "github.com/vulcand/route"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/plugin/ratelimit"
 )
 
 func init() {

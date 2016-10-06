@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/buger/goterm"
-	"github.com/vulcand/vulcand/engine"
+	"github.com/ruprict/vulcand/engine"
 )
 
 func (cmd *Command) printResult(format string, in interface{}, err error) {

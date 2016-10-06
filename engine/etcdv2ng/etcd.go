@@ -15,11 +15,12 @@ import (
 	"time"
 
 	"errors"
+
 	log "github.com/Sirupsen/logrus"
 	etcd "github.com/coreos/etcd/client"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/plugin"
-	"github.com/vulcand/vulcand/secret"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/plugin"
+	"github.com/ruprict/vulcand/secret"
 	"golang.org/x/net/context"
 )
 

@@ -2,9 +2,10 @@ package command
 
 import (
 	"fmt"
+
 	"github.com/codegangsta/cli"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/plugin"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/plugin"
 )
 
 func NewMiddlewareCommands(cmd *Command) []cli.Command {

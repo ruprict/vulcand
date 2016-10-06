@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/plugin/connlimit"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/plugin/connlimit"
 
 	. "gopkg.in/check.v1"
 )

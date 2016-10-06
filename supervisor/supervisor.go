@@ -7,8 +7,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/mailgun/timetools"
-	"github.com/vulcand/vulcand/engine"
-	"github.com/vulcand/vulcand/proxy"
+	"github.com/ruprict/vulcand/engine"
+	"github.com/ruprict/vulcand/proxy"
 )
 
 // Supervisor watches changes to the dynamic backends and applies those changes to the server in real time.
